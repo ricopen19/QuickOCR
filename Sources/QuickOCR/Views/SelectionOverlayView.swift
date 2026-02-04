@@ -11,6 +11,8 @@ final class SelectionOverlayView: NSView {
     /// キャンセル時に呼ばれるコールバック
     var onCancel: (() -> Void)?
 
+    private var escMonitor: Any?
+
     init(screenshot: NSImage, frame: CGRect) {
         self.screenshot = screenshot
         super.init(frame: frame)
@@ -125,8 +127,27 @@ final class SelectionOverlayView: NSView {
 
     // MARK: - キャンセル
 
+    /// ウィンドウへの追加・削除で Local Monitor を開始・停止する。
+    /// .screenSaver レベルのウィンドウは First Responder になりにくいため、
+    /// keyDown オーバーライドだけでは Esc が届かない場合がある。
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            escMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+                guard event.keyCode == 53 else { return event } // Escape 以外は流す
+                self?.onCancel?()
+                return nil // イベントを消費
+            }
+        } else {
+            if let m = escMonitor {
+                NSEvent.removeMonitor(m)
+                escMonitor = nil
+            }
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { // Escape
+        if event.keyCode == 53 { // Escape（First Responder になった場合のフォールバック）
             onCancel?()
         }
     }

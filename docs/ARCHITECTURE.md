@@ -91,7 +91,7 @@ AppDelegate.runOCR(on: image)
 - tap = session (`rawValue: 0`), place = tail (`rawValue: 1`), options = listenOnly (`rawValue: 1`)
 - callback は literal closure のみ（static method 参照は C function pointer に変換不可）
 - `CGEvent.tapEnable(tap:enable:)` で有効/無効切り替え
-- RunLoopSource: `CFMachPortCreateRunLoopSource` → `CFRunLoopAddSource(CFRunLoopGetMain(), source, CFRunLoopMode("kCFRunLoopModeCommon" as CFString))`
+- RunLoopSource: `CFMachPortCreateRunLoopSource` → `CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)`
 - Cleanup: tap と source を nil にすれば ARC で解放（`CGEventTapDestroy` は不存在）
 - **動的キー切り替え**: `targetKeyCode`/`targetFlags` をインスタンスプロパティとして保持。コールバック内で毎回読み取る → tap 再登録なしで `updateBinding(_:)` で変更可
 - Option キーの CGEventFlags: `.maskAlternate`（`.maskOption` は不存在）
@@ -147,7 +147,7 @@ AppDelegate.runOCR(on: image)
 ### SettingsView / ShortcutRecorder
 - SwiftUI `Form` ベース。NSWindow に `NSHostingView` で埋め込む
 - `ShortcutRecorder`: `NSViewRepresentable` で `FocusView`（`NSView` サブクラス）を生成
-- `FocusView.keyDown(with:)` でキーイベントを受信 → `KeyBinding` に変換
+- `FocusView` は Local Monitor（`addLocalMonitorForEvents`）でキーイベントを受信 → `KeyBinding` に変換。`keyDown(with:)` オーバーライドは残っているが `super` に委ねるだけ（モニタが唯一のパス）
 - Esc キー(keyCode 53)でキャンセル
 
 ---
@@ -164,7 +164,7 @@ AppDelegate.runOCR(on: image)
 | `CGEventField.keyboardEventKeystroke` | `.keyboardEventKeycode` |
 | `CGEventTapRunLoopSource` | `CFMachPortCreateRunLoopSource` |
 | `CGEventTapDestroy` | 不存在。nil にすれば ARC で解放 |
-| `kCFRunLoopModeCommon` | `CFRunLoopMode("kCFRunLoopModeCommon" as CFString)` |
+| `kCFRunLoopModeCommon` | `.commonModes`（文字列キャスト不要） |
 | `CGWindowListCreateImage` | macOS 15.0 で unavailable。`ScreenCaptureKit` を使用 |
 | `NSView.draw(in:)` | `draw(_:)` |
 | `NSRectFill` | `NSBezierPath(rect:).fill()` |

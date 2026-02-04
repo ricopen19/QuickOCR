@@ -18,7 +18,9 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
     }
 
     public func applicationDidFinishLaunching(_ aNotification: Notification) {
-        UNUserNotificationCenter.current().delegate = self
+        if AppEnvironment.isAppBundle {
+            UNUserNotificationCenter.current().delegate = self
+        }
         setupHotkey()
         DispatchQueue.global().async { OCRService.warmUp() }
 
@@ -77,6 +79,17 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
         service.onCancelled = { [weak self] in
             self?.selectionService = nil
         }
+        service.onError = { [weak self] error in
+            self?.selectionService = nil
+            let notificationService = NotificationService()
+            Task {
+                _ = await notificationService.requestPermission()
+                try? await notificationService.showError(
+                    title: "キャプチャ失敗",
+                    message: error.localizedDescription
+                )
+            }
+        }
         selectionService = service
         Task { await service.showOverlay() }
     }
@@ -117,7 +130,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
         alert.messageText = "アクセシビリティ権限が必要です"
         alert.informativeText = (
             "QuickOCRのグローバルショートカットを使用するためには、アクセシビリティ権限が必要です。\n\n"
-            + "システム設定 > プライバシーとセキュリティ > アクセシビリティで QuickOCR を許可してください。"
+            + "システム設定 > プライバシーとセキュリティ > アクセシビリティで QuickOCR を許可した後、アプリを再起動してください。"
         )
         alert.addButton(withTitle: "設定を開く")
         alert.addButton(withTitle: "キャンセル")
@@ -188,4 +201,3 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
         window.makeKeyAndOrderFront(nil)
     }
 }
-

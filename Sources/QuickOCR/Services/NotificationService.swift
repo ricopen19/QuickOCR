@@ -9,12 +9,23 @@ protocol NotificationCenterProtocol {
 
 extension UNUserNotificationCenter: NotificationCenterProtocol {}
 
+private struct NoopNotificationCenter: NotificationCenterProtocol {
+    func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool { false }
+    func add(_ request: UNNotificationRequest) async throws {}
+}
+
 /// macOSシステム通知の表示を担当するサービス
 final class NotificationService {
     private let center: NotificationCenterProtocol
 
-    init(center: NotificationCenterProtocol = UNUserNotificationCenter.current()) {
-        self.center = center
+    init(center: NotificationCenterProtocol? = nil) {
+        if let center {
+            self.center = center
+        } else if AppEnvironment.isAppBundle {
+            self.center = UNUserNotificationCenter.current()
+        } else {
+            self.center = NoopNotificationCenter()
+        }
     }
 
     /// 通知の許可を要求する

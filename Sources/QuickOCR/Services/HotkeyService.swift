@@ -30,15 +30,27 @@ final class HotkeyService {
         guard AXIsProcessTrusted() else { return false }
 
         let tap = CGEvent.tapCreate(
-            tap: CGEventTapLocation(rawValue: 0)!,   // session
+            tap: .cgSessionEventTap,
             place: CGEventTapPlacement(rawValue: 1)!, // tail
             options: CGEventTapOptions(rawValue: 1)!, // listenOnly
             eventsOfInterest: CGEventMask(1 << CGEventType.keyDown.rawValue),
             callback: { (_, type, event, userInfo) -> Unmanaged<CGEvent>? in
-                guard type == .keyDown, let ptr = userInfo else {
+                guard let ptr = userInfo else {
                     return Unmanaged.passUnretained(event)
                 }
                 let service = Unmanaged<HotkeyService>.fromOpaque(ptr).takeUnretainedValue()
+
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    // タップが無効化された場合、再有効化を試みる
+                    if let tap = service.eventTap {
+                        CGEvent.tapEnable(tap: tap, enable: true)
+                    }
+                    return Unmanaged.passUnretained(event)
+                }
+                
+                guard type == .keyDown else {
+                     return Unmanaged.passUnretained(event)
+                }
 
                 guard event.getIntegerValueField(.keyboardEventKeycode) == service.targetKeyCode else {
                     return Unmanaged.passUnretained(event)
@@ -50,7 +62,7 @@ final class HotkeyService {
                 }
 
                 service.onHotkeyPressed?()
-                return Unmanaged.passUnretained(event)
+                return Unmanaged.passUnretained(event) // イベントを通過させる（他のアプリでも使えるようにする）
             },
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         )
@@ -60,7 +72,7 @@ final class HotkeyService {
         guard let source = source else { return false }
 
         CFRunLoopAddSource(
-            CFRunLoopGetMain(), source, CFRunLoopMode("kCFRunLoopModeCommon" as CFString)
+            CFRunLoopGetMain(), source, CFRunLoopMode.commonModes
         )
         CGEvent.tapEnable(tap: tap, enable: true)
 
@@ -90,7 +102,7 @@ final class HotkeyService {
         }
         if let source = runLoopSource {
             CFRunLoopRemoveSource(
-                CFRunLoopGetMain(), source, CFRunLoopMode("kCFRunLoopModeCommon" as CFString)
+                CFRunLoopGetMain(), source, CFRunLoopMode.commonModes
             )
         }
         eventTap = nil

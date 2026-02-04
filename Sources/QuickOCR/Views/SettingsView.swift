@@ -1,4 +1,5 @@
 import SwiftUI
+import ApplicationServices
 
 struct SettingsView: View {
     @State private var settings: AppSettings
@@ -49,6 +50,11 @@ struct SettingsView: View {
                 }
                 if let message = conflictMessage {
                     Text(message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                if !AXIsProcessTrusted() {
+                    Text("グローバルショートカットにはアクセシビリティ権限が必要です。")
                         .font(.caption)
                         .foregroundColor(.red)
                 }
@@ -199,19 +205,22 @@ struct ShortcutRecorder: NSViewRepresentable {
                 isRecording = false
                 return
             }
-            
+
             // 修飾キーのみの場合は無視（ただし、これらが押された状態で他のキーが押されるのを待つ）
             // NSEvent.modifierFlagsは現在の全修飾キー状態を含む
-            
+
             // 修飾キーの変換
             var modifiers: Set<ModifierKey> = []
             if event.modifierFlags.contains(.command) { modifiers.insert(.command) }
             if event.modifierFlags.contains(.shift) { modifiers.insert(.shift) }
             if event.modifierFlags.contains(.option) { modifiers.insert(.option) }
             if event.modifierFlags.contains(.control) { modifiers.insert(.control) }
-            
+
             let binding = KeyBinding(keyCode: Int(event.keyCode), modifiers: modifiers)
             onRecord(binding)
+            isRecording = false
+        }
+        view.onCancel = {
             isRecording = false
         }
         return view
@@ -219,19 +228,56 @@ struct ShortcutRecorder: NSViewRepresentable {
     
     func updateNSView(_ nsView: NSView, context: Context) {
         if isRecording {
+            if let focusView = nsView as? FocusView {
+                focusView.startMonitoring()
+            }
             DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                nsView.window?.makeKeyAndOrderFront(nil)
                 nsView.window?.makeFirstResponder(nsView)
             }
+        } else if let focusView = nsView as? FocusView {
+            focusView.stopMonitoring()
         }
     }
     
     class FocusView: NSView {
         var onKeyDown: ((NSEvent) -> Void)?
+        var onCancel: (() -> Void)?
+        private var monitor: Any?
         
         override var acceptsFirstResponder: Bool { true }
         
         override func keyDown(with event: NSEvent) {
-            onKeyDown?(event)
+            super.keyDown(with: event)
+        }
+
+        override func mouseDown(with event: NSEvent) {
+            onCancel?()
+        }
+
+        func startMonitoring() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+                guard let self else { return event }
+                if event.keyCode == 53 {
+                    self.onCancel?()
+                    return nil
+                }
+                self.onKeyDown?(event)
+                return nil
+            }
+        }
+
+        func stopMonitoring() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
+            }
+        }
+
+        deinit {
+            MainActor.assumeIsolated { stopMonitoring() }
         }
     }
 }

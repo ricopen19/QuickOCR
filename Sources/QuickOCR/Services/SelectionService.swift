@@ -12,6 +12,8 @@ final class SelectionService {
     var onCaptured: ((NSImage) -> Void)?
     /// キャンセルされた時のコールバック
     var onCancelled: (() -> Void)?
+    /// キャプチャエラーが発生した時のコールバック
+    var onError: ((Error) -> Void)?
 
     /// 全画面オーバーレイを表示し、矩形選択を開始する
     func showOverlay() async {
@@ -21,8 +23,11 @@ final class SelectionService {
         }
         capturedScreen = screen
 
-        guard let screenshot = try? await ScreenCaptureService.captureImage(in: screen.frame) else {
-            onCancelled?()
+        let screenshot: CGImage
+        do {
+            screenshot = try await ScreenCaptureService.captureImage(in: screen.frame)
+        } catch {
+            onError?(error)
             return
         }
         fullScreenshot = screenshot

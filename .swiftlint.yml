@@ -1,0 +1,24 @@
+disabled_rules:
+  - trailing_whitespace
+  - todo
+  - identifier_name
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+  - Package.swift
+  - Sources/QuickOCR/App/AppDelegate.swift # Often large in simple apps, maybe exclude specific rules if needed, but for now apply generally
+
+line_length: 120
+function_body_length: 60
+type_body_length: 300
+file_length: 600
+
+reporter: "xcode"

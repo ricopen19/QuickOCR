@@ -4,7 +4,9 @@ import ApplicationServices
 struct SettingsView: View {
     @State private var settings: AppSettings
     @State private var isRecording = false
+    @State private var isRecordingMarkdown = false
     @State private var conflictMessage: String?
+    @State private var markdownConflictMessage: String?
     @State private var launchAtLoginError: String?
     
     private let settingsService = SettingsService()
@@ -38,7 +40,7 @@ struct SettingsView: View {
             
             Section("ショートカット") {
                 HStack {
-                    Text("起動キー:")
+                    Text("OCR（テキスト）:")
                     Spacer()
                     Button(action: {
                         isRecording = true
@@ -53,12 +55,30 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundColor(.red)
                 }
+
+                HStack {
+                    Text("OCR（Markdown）:")
+                    Spacer()
+                    Button(action: {
+                        isRecordingMarkdown = true
+                    }, label: {
+                        Text(isRecordingMarkdown ? "入力待機中..." : keyBindingString(settings.shortcutKeyMarkdown))
+                            .frame(minWidth: 100)
+                    })
+                    .buttonStyle(.bordered)
+                }
+                if let message = markdownConflictMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+
                 if !AXIsProcessTrusted() {
                     Text("グローバルショートカットにはアクセシビリティ権限が必要です。")
                         .font(.caption)
                         .foregroundColor(.red)
                 }
-                
+
                 Text("ショートカットキーを押して設定を変更します。\nEscキーでキャンセルできます。")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -70,6 +90,11 @@ struct SettingsView: View {
             if isRecording {
                 ShortcutRecorder(isRecording: $isRecording) { newBinding in
                     updateShortcut(newBinding)
+                }
+            }
+            if isRecordingMarkdown {
+                ShortcutRecorder(isRecording: $isRecordingMarkdown) { newBinding in
+                    updateMarkdownShortcut(newBinding)
                 }
             }
         }
@@ -104,18 +129,27 @@ struct SettingsView: View {
     }
     
     private func updateShortcut(_ binding: KeyBinding) {
-        // コンフリクトチェック
         if let message = ShortcutConflictChecker.conflict(for: binding) {
             conflictMessage = message
         } else {
             conflictMessage = nil
         }
-        
+
         settings.shortcutKey = binding
         saveSettings()
-        
-        // AppDelegateに通知して更新
         AppDelegate.shared?.updateHotkey(to: binding)
+    }
+
+    private func updateMarkdownShortcut(_ binding: KeyBinding) {
+        if let message = ShortcutConflictChecker.conflict(for: binding) {
+            markdownConflictMessage = message
+        } else {
+            markdownConflictMessage = nil
+        }
+
+        settings.shortcutKeyMarkdown = binding
+        saveSettings()
+        AppDelegate.shared?.updateMarkdownHotkey(to: binding)
     }
     
     private func keyBindingString(_ binding: KeyBinding) -> String {

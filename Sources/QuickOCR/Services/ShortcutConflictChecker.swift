@@ -34,6 +34,11 @@ final class ShortcutConflictChecker {
         KnownShortcut(
             binding: KeyBinding(keyCode: 4, modifiers: [.command]),
             message: "Cmd+H（非表示にする）と衝突します"
+        ),
+        // macOS スクリーンショット
+        KnownShortcut(
+            binding: KeyBinding(keyCode: 46, modifiers: [.command, .shift]),
+            message: "Cmd+Shift+M はFinderの「フォルダへ移動」と衝突する可能性があります"
         )
     ]
 }

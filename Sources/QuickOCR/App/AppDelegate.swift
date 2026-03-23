@@ -91,6 +91,11 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
 
     // MARK: - OCR Flow
 
+    public func startMarkdownOCRFlow() {
+        useMarkdownMode = true
+        startOCRFlow()
+    }
+
     public func startOCRFlow() {
         guard selectionService == nil else { return }
 

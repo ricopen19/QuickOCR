@@ -20,6 +20,10 @@ struct MenuBarMenuView: View {
             AppDelegate.shared?.startOCRFlow()
         }
 
+        Button("Markdown OCRを実行") {
+            AppDelegate.shared?.startMarkdownOCRFlow()
+        }
+
         Divider()
 
         Button("設定...") {

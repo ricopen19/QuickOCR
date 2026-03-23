@@ -7,8 +7,10 @@ struct QuickOCRApp: App {
     var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("QuickOCR", systemImage: "text.viewfinder") {
+        MenuBarExtra {
             MenuBarMenuView()
+        } label: {
+            Image(nsImage: MenuBarIconService.createIcon())
         }
         .menuBarExtraStyle(.menu)
     }

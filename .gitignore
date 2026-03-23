@@ -3,6 +3,7 @@
 .DS_Store
 dist/
 docs/ARCHITECTURE.md
+docs/decisions.md
 docs/design.md
 docs/tasks.md
 print:

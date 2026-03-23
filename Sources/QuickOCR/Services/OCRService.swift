@@ -63,20 +63,30 @@ final class OCRService {
         try handler.perform([request])
 
         let observations = request.results ?? []
-        let candidates = observations.compactMap { $0.topCandidates(1).first }
-        let text = candidates.map { $0.string }.joined(separator: "\n")
+
+        let lines: [OCRTextLine] = observations.compactMap { observation in
+            guard let candidate = observation.topCandidates(1).first else { return nil }
+            return OCRTextLine(
+                text: candidate.string,
+                confidence: candidate.confidence,
+                boundingBox: observation.boundingBox
+            )
+        }
+
+        let text = lines.map { $0.text }.joined(separator: "\n")
 
         guard !text.isEmpty else {
             throw OCRError.noTextFound
         }
 
-        let confidence = candidates.map { $0.confidence }.reduce(0, +) / Float(candidates.count)
+        let confidence = lines.map { $0.confidence }.reduce(0, +) / Float(lines.count)
 
         return OCRResult(
             text: text,
             confidence: confidence,
             recognizedLanguage: "auto",
-            processingTime: Date().timeIntervalSince(startTime)
+            processingTime: Date().timeIntervalSince(startTime),
+            lines: lines
         )
     }
 }

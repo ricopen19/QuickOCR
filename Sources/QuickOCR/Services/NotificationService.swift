@@ -39,9 +39,9 @@ final class NotificationService {
     }
 
     /// OCR完了通知を表示する
-    func showOCRComplete(text: String) async throws {
+    func showOCRComplete(text: String, title: String = "OCR完了") async throws {
         let content = UNMutableNotificationContent()
-        content.title = "OCR完了"
+        content.title = title
         content.subtitle = "テキストをコピーしました"
         content.body = truncate(text)
 

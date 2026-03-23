@@ -17,6 +17,8 @@ struct KeyBinding: Codable, Equatable {
 
     /// デフォルト: Cmd+Shift+O
     static let defaultOCR = KeyBinding(keyCode: 31, modifiers: [.command, .shift])
+    /// デフォルト: Cmd+Shift+M (keyCode 46 = "M")
+    static let defaultMarkdownOCR = KeyBinding(keyCode: 46, modifiers: [.command, .shift])
 }
 
 /// アプリ設定モデル
@@ -29,4 +31,6 @@ struct AppSettings: Codable {
     var enableSoundFeedback: Bool = false
     /// テキストフォーマット処理（改行正規化）
     var enableTextFormatting: Bool = true
+    /// Markdown OCR 用ショートカットキー
+    var shortcutKeyMarkdown: KeyBinding = .defaultMarkdownOCR
 }

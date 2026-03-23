@@ -10,7 +10,10 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
     nonisolated(unsafe) public static weak var shared: AppDelegate?
 
     private var hotkeyService: HotkeyService?
+    private var markdownHotkeyService: HotkeyService?
     private var selectionService: SelectionService?
+    /// 現在の OCR モード（ホットキーで切り替え）
+    private var useMarkdownMode = false
 
     public override init() {
         super.init()
@@ -33,6 +36,7 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
 
     public func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         hotkeyService?.unregister()
+        markdownHotkeyService?.unregister()
         return .terminateNow
     }
 
@@ -49,9 +53,12 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
 
     private func setupHotkey() {
         let settings = SettingsService().load()
+
+        // プレーンテキスト OCR
         let service = HotkeyService(binding: settings.shortcutKey)
         service.onHotkeyPressed = {
             Task { @MainActor in
+                self.useMarkdownMode = false
                 self.startOCRFlow()
             }
         }
@@ -59,11 +66,27 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
             showAccessibilityAlert()
         }
         hotkeyService = service
+
+        // Markdown OCR
+        let mdService = HotkeyService(binding: settings.shortcutKeyMarkdown)
+        mdService.onHotkeyPressed = {
+            Task { @MainActor in
+                self.useMarkdownMode = true
+                self.startOCRFlow()
+            }
+        }
+        _ = mdService.register()
+        markdownHotkeyService = mdService
     }
 
     /// ショートカットキーを動的に変更する（設定画面から呼び出す）
     func updateHotkey(to binding: KeyBinding) {
         hotkeyService?.updateBinding(binding)
+    }
+
+    /// Markdown OCR のショートカットキーを動的に変更する
+    func updateMarkdownHotkey(to binding: KeyBinding) {
+        markdownHotkeyService?.updateBinding(binding)
     }
 
     // MARK: - OCR Flow
@@ -102,16 +125,24 @@ public class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCen
         do {
             let result = try ocrService.recognizeText(in: image)
             let settings = SettingsService().load()
-            let formattedText = settings.enableTextFormatting ? TextFormatService().format(result.text) : result.text
+
+            let formattedText: String
+            if useMarkdownMode {
+                formattedText = MarkdownFormatService().format(result.lines)
+            } else {
+                formattedText = settings.enableTextFormatting ? TextFormatService().format(result.text) : result.text
+            }
+
             try clipboardService.copy(formattedText)
 
             if settings.enableSoundFeedback {
                 SoundService().playCompletionSound()
             }
 
+            let modeLabel = useMarkdownMode ? "Markdown OCR完了" : "OCR完了"
             Task {
                 _ = await notificationService.requestPermission()
-                try? await notificationService.showOCRComplete(text: formattedText)
+                try? await notificationService.showOCRComplete(text: formattedText, title: modeLabel)
             }
         } catch {
             Task {

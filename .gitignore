@@ -2,6 +2,7 @@
 .swiftpm/
 .DS_Store
 dist/
+.serena/
 docs/ARCHITECTURE.md
 docs/decisions.md
 docs/design.md

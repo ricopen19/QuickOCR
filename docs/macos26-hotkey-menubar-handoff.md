@@ -9,7 +9,9 @@ macOS 26 移行後、QuickOCR に3つの問題が発生した。
 
 1. アプリが即座に終了する → **解決済み**（SwiftUI `MenuBarExtra` → `NSStatusItem` への置き換え。別セッションで対応済み）
 2. メニューバーアイコンが表示されない → **解決済み（2026-07-11 Fable セッション）**。ControlCenter の内部登録簿破損が原因。詳細は後述
-3. `Cmd+Shift+O` グローバルホットキーが効かない → **未解決**（原因は特定済み、再設計方針は決定。実装待ち）
+3. `Cmd+Shift+O` グローバルホットキーが効かない → **解決済み（2026-07-11 Sonnet セッション）**。Carbon `RegisterEventHotKey` 実装に刷新（コミット `cb3add2`）
+
+**→ 本書の3問題はすべて解決済み。以下は経緯の記録として残す。**
 
 ## 根本原因（確定事項）
 
@@ -27,7 +29,13 @@ macOS 26 移行後、QuickOCR に3つの問題が発生した。
 
 この対策により、URLスキーム経由 (`open -a QuickOCRApp "quickocr://capture"`) でのOCRキャプチャは**正常動作を確認済み**。
 
-### Cmd+Shift+O ホットキーが効かない（未解決・原因は特定済み）
+### Cmd+Shift+O ホットキーが効かない（解決済み・2026-07-11）
+
+**解決: Carbon `RegisterEventHotKey` ベースの実装に刷新して動作確認済み**（コミット `cb3add2`）。
+ad-hoc 署名時代の Carbon 失敗は署名不安定による TCC 揮発が原因で、署名安定化後は Carbon がそのまま機能した。
+アクセシビリティ権限不要・イベント消費可。CGEventTap フォールバックは不要だった。
+
+以下は解決前の記録:
 
 macOS 26 では、ad-hoc署名時に以下の現象が確認された:
 - Carbon `RegisterEventHotKey` は登録自体は成功する（`noErr`）が、コールバックが一切発火しない
@@ -79,20 +87,22 @@ QuickOCR と Kanary に共通する要因（LSUIElement、Accessibility要求、
 | `open -a QuickOCRApp "quickocr://capture"` でOCRキャプチャ | ○ 正常動作（選択オーバーレイが出る） |
 | 画面収録権限 | ○ 許可済み・持続確認済み（署名安定化後） |
 | メニューバーアイコン表示 | ○ 表示される（2026-07-11 修復済み。上記「解決済み」参照） |
-| `Cmd+Shift+O` グローバルホットキー | × 効かない（`hidSystemState`ポーリングの設計限界） |
+| `Cmd+Shift+O` / `Cmd+Shift+M` グローバルホットキー | ○ 動作する（2026-07-11 Carbon 実装に刷新済み） |
 | ステータスメニューからの「設定」「終了」等 | ○ アイコン表示の復旧により使用可能 |
 
 ## 変更済みファイル
 
 - `Makefile`: `SIGN_IDENTITY` 変数追加、`codesign --sign "$(SIGN_IDENTITY)"` に変更（証明書名は環境依存 — Fableで別Macに展開する場合は要調整）
-- `Sources/QuickOCR/Services/HotkeyService.swift`: Carbon → DispatchSourceTimerポーリング(`hidSystemState`) → 現状。**通常キー非検知のため実質的に機能しない。要再設計**
+- `Sources/QuickOCR/Services/HotkeyService.swift`: Carbon → DispatchSourceTimerポーリング(`hidSystemState`) → **Carbon `RegisterEventHotKey` に刷新（最終形・動作確認済み）**
 - `Sources/QuickOCR/App/AppDelegate.swift`:
   - `application(_:open:)` を追加（URLスキーム `quickocr://capture` / `quickocr://capture-md` 対応）— 正常動作確認済み
-  - `setupStatusItem()` / `makeStatusBarImage()` を非テンプレート画像描画に変更 — 表示問題は未解決のまま
-  - デバッグ用 `NSLog` / `NSSound.beep()` が随所に残存（本番化前に要除去）
+  - `setupStatusItem()` / `makeStatusBarImage()` を非テンプレート画像描画に変更
+  - デバッグ用 `NSLog` / `NSSound.beep()` は除去済み
 - `scripts/build_app.sh`: `CFBundleURLTypes` を Info.plist に追加（URLスキーム登録）
 
-## ホットキー再設計方針（Fable 決定・2026-07-11 → Sonnet 実装待ち）
+## ホットキー再設計方針（Fable 決定 → Sonnet 実装完了・2026-07-11）
+
+**結果: 手順1（Carbon 再検証）で解決。CGEventTap フォールバックは不要だった。完了条件（ホットキー→オーバーレイ表示）は実機で確認済み、`main` に push 済み（`cb3add2`）。**
 
 **方針: まず Carbon `RegisterEventHotKey` を再検証し、ダメなら CGEventTap listen-only にフォールバック。`hidSystemState` ポーリングは廃止。**
 

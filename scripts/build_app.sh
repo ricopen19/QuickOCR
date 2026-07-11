@@ -6,6 +6,7 @@ BUNDLE_ID="com.quickocr.app"
 BUILD_CONFIG="release"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$ROOT_DIR/scripts"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/${APP_NAME}.app"
 CONTENTS_DIR="$APP_DIR/Contents"
@@ -60,6 +61,17 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <true/>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>quickocr</string>
+      </array>
+      <key>CFBundleURLName</key>
+      <string>${BUNDLE_ID}</string>
+    </dict>
+  </array>
 </dict>
 </plist>
 PLIST

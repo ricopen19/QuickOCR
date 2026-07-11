@@ -15,7 +15,7 @@ private struct NoopNotificationCenter: NotificationCenterProtocol {
 }
 
 /// macOSシステム通知の表示を担当するサービス
-final class NotificationService {
+final class NotificationService: @unchecked Sendable {
     private let center: NotificationCenterProtocol
 
     init(center: NotificationCenterProtocol? = nil) {

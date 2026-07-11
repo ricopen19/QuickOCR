@@ -45,3 +45,15 @@ macOS の権限モデルは `.app` 単位で管理されているため、非.ap
 
 **ルール：** `CFRunLoopAddSource` の第3引数は必ず `.commonModes` を使う。
 文字列キャスト (`CFRunLoopMode("kCFRunLoopModeCommon" as CFString)`) は誤り。
+
+---
+
+## メニューバーアイコンが突然表示されなくなったら（macOS 26）
+
+macOS 26 では `NSStatusItem` を ControlCenter がホスティングする。ターミナルから .app を起動すると
+「責任プロセス＝ターミナル」として ControlCenter の登録簿に誤記録され、ターミナルがメニューバー非許可の
+場合アイコンが巻き添えブロックされる（ログ: `Moving host to blocked list`）。
+
+**ルール：** メニューバー表示の動作確認は Spotlight/Finder 経由で起動する。
+再発時の修復手順は `docs/macos26-hotkey-menubar-handoff.md` の「解決済み」セクションを参照
+（trackedApplications の修復 → `killall -9 ControlCenter`）。

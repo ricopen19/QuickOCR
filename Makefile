@@ -1,7 +1,8 @@
 .PHONY: build test app dmg install run clean help
 
-ENTITLEMENTS = QuickOCR.entitlements
-APP_DIR      = dist/QuickOCRApp.app
+ENTITLEMENTS  = QuickOCR.entitlements
+APP_DIR       = dist/QuickOCRApp.app
+SIGN_IDENTITY = Apple Development: auto_mato@icloud.com (QYG28ZT55K)
 
 # ── ヘルプ ──────────────────────────────────────────
 help:
@@ -23,10 +24,11 @@ test:
 	swift test
 
 # ── ビルド・パッケージング ──────────────────────────
-# app: release ビルド → .app バンドル → ad-hoc 署名
+# app: release ビルド → .app バンドル → Apple Development 証明書で署名
+# TCC (画面収録・入力監視等) の権限をリビルドごとに保持するため、安定した署名 ID を使う
 app:
 	bash scripts/build_app.sh
-	codesign --force --sign - --entitlements $(ENTITLEMENTS) $(APP_DIR)
+	codesign --force --sign "$(SIGN_IDENTITY)" --entitlements $(ENTITLEMENTS) $(APP_DIR)
 
 # dmg: .app バンドルから DMG を生成（create_dmg.sh 内で build_app.sh を実行）
 dmg:
